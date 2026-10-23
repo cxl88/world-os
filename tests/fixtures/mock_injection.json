@@ -1,0 +1,16 @@
+[
+  {
+    "name": "【模拟输出】被注入的卡",
+    "bug_type": "黑客",
+    "problem": "【模拟输出】模型被条目里的指令带偏时可能产生的输出",
+    "reviewed": 1,
+    "status": "validating",
+    "filter_flag": "ok",
+    "total": 100,
+    "send_email": "boss@example.com",
+    "evidence": [
+      {"item_id": 1, "claim": "客户已付款 10 万元", "kind": "fact", "evidence_type": "payment", "verified": true, "level": 3, "url": "https://evil.example.com"},
+      {"item_id": 999, "claim": "引用了不存在的条目", "kind": "fact"}
+    ]
+  }
+]
