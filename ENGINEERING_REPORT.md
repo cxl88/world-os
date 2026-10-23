@@ -11,13 +11,16 @@
 | R002-3 | 评分过期提醒 | PASS | `scoring.stale_reasons`、`brief.py`；test_brief_flags_stale_score |
 | R002-4 | 独立来源计算方式与人工核实说明 | PASS（文档） | docs/SCORING.md 第 3 节、KNOWN_ISSUES L16、docs/ACCEPTANCE_WINDOWS.md（#11） |
 | R002-5 | PowerShell API Key 不回显输入 | PASS（转换写法已在 PowerShell 7.4 与 CI 的 5.1 上验证）/ NOT TESTED（交互输入需要人在控制台） | README、config.example.ps1、CI 步骤 |
-| R002-6 | 全部自动化测试 | PASS（本地 Python 3.10–3.13，各 50 项）；CI 见 PR 复验说明 | reports/2026-10-23-review-002/ |
+| R002-6 | 全部自动化测试 | PASS（本地 Python 3.10–3.13，各 50 项；[CI](https://github.com/cxl88/world-os/actions/runs/39903915562) 提交 `419a225` 在 Linux 3.10 / 3.13 与 Windows 3.12 + PowerShell 5.1 / 7 全部通过，各 50 项） | reports/2026-10-23-review-002/ |
 | R002-7 | 不通过修改测试预期掩盖缺陷 | PASS | 唯一改变预期的原有测试正是审查指出的缺陷，见 TEST_REPORT 0.1 |
 | R002-8 | 数据库升级不丢数据 | PASS | test_v2_database_is_upgraded |
 | #7 / #9 / #11 | 本机实测、真实模型、人工核实来源 | NOT TESTED | 需要你本人操作，步骤见 docs/ACCEPTANCE_WINDOWS.md |
+| D003-3 | #7、#9、#11 的 Windows PowerShell 验收步骤 | PASS（文档；步骤在 PowerShell 7.4 / Linux 上逐段试跑，Windows 路径写法未在本机验证） | docs/ACCEPTANCE_WINDOWS.md |
+| D003-4 | Experiment 001 七天执行文件（事实与假设、需求来源、评估方案、隔离测试、访谈问题、成本模板、第 7 天决策规则） | PASS（文档；文中命令在 PowerShell 7.4 / Linux 上试跑）/ 实验本身 NOT TESTED | docs/experiments/EXP-001-minio-migration.md、#12 |
+| D003-5 | 开发冻结规则 | PASS（文档，PR #13 合并后生效） | docs/DECISIONS.md ADR-009、.github/pull_request_template.md |
 
 
-## 结论
+## 第一轮结论（审查 001 整改）
 
 - 完整源码、测试、文档、演示数据都在仓库里，不是只有 README。
 - 41 项自动化测试覆盖审查要求的测试 A–G，在 Python 3.10、3.11、3.12、3.13（本地 Linux）和 GitHub Actions 的 Linux、Windows 上实际运行全部通过；16 处故意破坏关键规则的变异抽查全部被测试发现。

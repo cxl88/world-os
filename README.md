@@ -6,7 +6,7 @@
 - 不配置任何模型也能完整使用；配置后可接任何 OpenAI 兼容端点（如 DeepSeek）。
 - 数据只存在本机。真实商业数据和个人资料不要提交到仓库（`.gitignore` 已排除数据库和数据目录）。
 
-相关文档：[评分与证据规则](docs/SCORING.md) · [架构决策](docs/DECISIONS.md) · [已知问题](KNOWN_ISSUES.md) · [测试报告](TEST_REPORT.md) · [变更记录](CHANGELOG.md)
+相关文档：[评分与证据规则](docs/SCORING.md) · [架构决策](docs/DECISIONS.md) · [已知问题](KNOWN_ISSUES.md) · [测试报告](TEST_REPORT.md) · [变更记录](CHANGELOG.md) · [Windows 本机验收](docs/ACCEPTANCE_WINDOWS.md) · [Experiment 001](docs/experiments/EXP-001-minio-migration.md)
 
 ---
 

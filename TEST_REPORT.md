@@ -32,7 +32,7 @@
 | README 中 PowerShell 示例逐行执行（PowerShell 7.4，Linux） | PASS | readme-powershell-example.txt |
 | BUG HUNTER 复现脚本（bash、PowerShell 7.4） | PASS | bughunter-bash.txt、bughunter-pwsh74.txt |
 | README 的 API Key 转换写法（PowerShell 7.4） | PASS | apikey-snippet-pwsh74.txt |
-| CI（Linux 3.10 / 3.13，Windows 3.12 + PowerShell 5.1 与 7） | 见 PR #13 上的复验说明 | — |
+| CI（提交 `419a225`）：ubuntu-latest Python 3.10 / 3.13 的 unittest 与 demo.sh；windows-latest（Windows Server 2025、Python 3.12.10）的 unittest、demo.ps1（PowerShell 5.1 与 7）、BUG HUNTER run.ps1（5.1）、README 的 API Key 转换写法（5.1） | PASS，三个任务的 unittest 均为 50 项 | [运行记录](https://github.com/cxl88/world-os/actions/runs/39903915562) |
 | 你自己的 Windows 电脑（#7）、真实模型（#9）、人工核实来源（#11） | NOT TESTED | 需要你本人操作，步骤见 docs/ACCEPTANCE_WINDOWS.md |
 
 ---

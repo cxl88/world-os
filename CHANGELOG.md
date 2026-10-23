@@ -19,6 +19,11 @@
 - README 与 `config.example.ps1`：API Key 用 `Read-Host -AsSecureString` 输入，说明环境变量的局限和预算闸门的边界。
 - `docs/SCORING.md`：写明独立来源不识别转载和同源。
 
+### 文档（架构指令 003）
+- `docs/ACCEPTANCE_WINDOWS.md`：#7 本机运行、#9 真实模型小额调用、#11 人工核实来源的 PowerShell 验收步骤。
+- `docs/experiments/EXP-001-minio-migration.md`：MinIO 迁移缺口 7 天验证执行文件。
+- ADR-009 开发冻结规则；PR 模板增加冻结检查。
+
 ## v0.2.0 — 2026-10-23（架构审查 001 整改，分支 review-001）
 
 ### 新增
