@@ -38,7 +38,7 @@ def compute(scores, tier, pain_cap):
         s["pain"] = pain_cap
     raw = round(sum(WEIGHTS[k] * s[k] / 5 for k in WEIGHTS) * 100, 1)
     cap = evidence.TIER_CAP[tier]
-    total = min(raw, cap)
+    total = float(min(raw, cap))
     if total < raw:
         warnings.append(f"证据强度 {evidence.TIER_NAMES[tier]}，总分由 {raw} 封顶为 {cap}")
     return raw, total, warnings, s

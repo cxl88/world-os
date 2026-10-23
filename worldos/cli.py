@@ -28,8 +28,11 @@ def created(new_id, message):
 
 
 def _ids(text):
+    """接受 "1,2,3"、"1 2 3" 或多个参数（列表），兼容不同 shell 的传参方式。"""
+    if isinstance(text, (list, tuple)):
+        text = ",".join(text)
     try:
-        return [int(x) for x in text.split(",") if x.strip()]
+        return [int(x) for x in text.replace(" ", ",").split(",") if x.strip()]
     except ValueError:
         raise ValueError(f"id 列表格式应为 1,2,3，收到 {text!r}")
 
@@ -349,14 +352,14 @@ def build_parser():
     s.add_argument("--all", action="store_true"); s.add_argument("--limit", type=int, default=30)
 
     s = add("extract", cmd_extract, "从信息中提取候选 Bug（未配置模型或调用失败时自动生成提示词文件）")
-    s.add_argument("--ids", help="指定信息 id，如 1,2,3"); s.add_argument("--limit", type=int, default=10)
+    s.add_argument("--ids", nargs="+", help="指定信息 id，如 1,2,3"); s.add_argument("--limit", type=int, default=10)
     s.add_argument("--manual", action="store_true", help="不调用模型，直接生成提示词文件")
 
     add("card-template", cmd_card_template, "打印人工机会卡 JSON 模板")
     s = add("cards-import", cmd_cards_import, "从 JSON 文件导入机会卡")
     s.add_argument("path")
     s.add_argument("--ai", action="store_true", help="文件是模型输出：按 AI 推断处理并进入待审核")
-    s.add_argument("--items", help="--ai 时必填：这批输出对应的信息 id，如 1,2,3")
+    s.add_argument("--items", nargs="+", help="--ai 时必填：这批输出对应的信息 id，如 1,2,3")
     s = add("card-add", cmd_card_add, "快速新建机会卡")
     for f in cards.FIELDS:
         s.add_argument("--" + f.replace("_", "-"), dest=f, required=(f == "name"))

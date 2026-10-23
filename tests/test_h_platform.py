@@ -29,6 +29,14 @@ class PlatformTest(Base):
         self.assertIn("新增 1 条", self.ok("item-import", path))
         self.assertEqual(self.scalar("SELECT title FROM items"), "羽毛球馆订场")
 
+    def test_id_lists_accept_commas_or_spaces(self):
+        # PowerShell 包装函数或不同 shell 可能把 1,2 拆成多个参数
+        for i in range(3):
+            self.new_id("item-add", "--title", f"t{i}", "--source", "s")
+        self.assertIn("手动模式", self.ok("extract", "--manual", "--ids", "1,2"))
+        self.assertIn("手动模式", self.ok("extract", "--manual", "--ids", "1", "3"))
+        self.fail("extract", "--manual", "--ids", "1,x", contains="id 列表")
+
     def test_porcelain_prints_only_id(self):
         code, o, e = self._porcelain("item-add", "--title", "t", "--source", "s")
         self.assertEqual((code, o.strip()), (0, "1"))
