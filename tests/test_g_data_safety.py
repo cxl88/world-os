@@ -3,7 +3,7 @@ import json
 import os
 import sqlite3
 
-from worldos import db
+from worldos import backup, db
 
 from .helpers import Base
 
@@ -38,7 +38,7 @@ class DataSafetyTest(Base):
         self.assertTrue(backup_path.startswith(os.path.join(self.dir, "backups")))
         # 备份后继续写入，再恢复：应回到备份时的状态
         self.new_id("item-add", "--title", "备份后新增", "--source", "s")
-        self.fail("restore", backup_path, contains="--force")
+        self.fails("restore", backup_path, contains="--force")
         o = self.ok("restore", backup_path, "--force")
         self.assertIn("原数据库已另存为", o)
         self.conn.close()
@@ -69,8 +69,8 @@ class DataSafetyTest(Base):
         bad = os.path.join(self.dir, "坏文件.db")
         with open(bad, "wb") as f:
             f.write(b"not a database" * 100)
-        self.fail("restore", bad, "--force", contains="SQLite")
-        self.fail("restore", os.path.join(self.dir, "不存在.db"), contains="不存在")
+        self.fails("restore", bad, "--force", contains="SQLite")
+        self.fails("restore", os.path.join(self.dir, "不存在.db"), contains="不存在")
 
     def test_old_schema_is_refused(self):
         old = os.path.join(self.dir, "old.db")
@@ -84,3 +84,31 @@ class DataSafetyTest(Base):
         with redirect_stderr(e):
             self.assertEqual(cli.main(["--db", old, "cards"]), 1)
         self.assertIn("旧版结构", e.getvalue())
+
+    def test_v2_database_is_upgraded(self):
+        """版本 2 的数据库（上一轮 v0.2.0 测试版）打开时自动升级到当前版本，原有数据保留。"""
+        v2_llm_calls = """CREATE TABLE llm_calls (
+          id INTEGER PRIMARY KEY, task TEXT, provider TEXT, model TEXT, status TEXT NOT NULL, error TEXT,
+          input_tokens INTEGER DEFAULT 0, output_tokens INTEGER DEFAULT 0, cost_usd REAL DEFAULT 0,
+          simulated INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL);"""
+        old = os.path.join(self.dir, "v2.db")
+        c = sqlite3.connect(old)
+        c.executescript(db.SCHEMA.split("CREATE TABLE IF NOT EXISTS llm_calls")[0] + v2_llm_calls)
+        c.executemany("INSERT INTO llm_calls (task, provider, model, status, cost_usd, created_at) "
+                      "VALUES ('extract', 'openai', 'm', ?, ?, '2026-10-01T00:00:00+08:00')",
+                      [("ok", 0.01), ("error", 0)])
+        c.execute("INSERT INTO items (title, source, added_at) VALUES ('旧条目', 's', '2026-10-01')")
+        c.execute("PRAGMA user_version = 2")
+        c.commit(); c.close()
+        # 备份文件可以是版本 2，恢复后同样升级
+        restored = os.path.join(self.dir, "restored.db")
+        counts, _ = backup.restore(old, restored)
+        self.assertEqual((counts["items"], counts["llm_calls"]), (1, 2))
+        for path in (old, restored):
+            conn = db.connect(path)
+            self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], db.SCHEMA_VERSION)
+            rows = conn.execute("SELECT status, usage_known, est_cost_usd FROM llm_calls ORDER BY id").fetchall()
+            # 旧版失败调用记的 0 元不可信：升级后标为用量未知、待对账
+            self.assertEqual([tuple(r) for r in rows], [("ok", 1, None), ("error", 0, None)])
+            self.assertEqual(conn.execute("SELECT title FROM items").fetchone()[0], "旧条目")
+            conn.close()

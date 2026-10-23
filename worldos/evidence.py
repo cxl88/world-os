@@ -12,6 +12,8 @@
   - 一条证据不能证明整个机会：某一强度要有 ≥2 个独立来源才算达到，
     只有 1 个来源时按下一档封顶。
 """
+import math
+
 from . import db
 
 # 类型 -> (强度档位, 中文名)
@@ -122,10 +124,15 @@ def profile(conn, card_id):
     }
 
 
+def positive_amount(a):
+    """金额是正的有限数字。旧数据里可能有 0、NaN、Infinity，一律不算。"""
+    return isinstance(a, (int, float)) and math.isfinite(a) and a > 0
+
+
 def deal_stage(conn, card_id):
     kinds = {r["kind"] for r in conn.execute(
-        "SELECT DISTINCT kind FROM logs WHERE card_id=? AND kind IN ('quote','intent','contract','payment')",
-        (card_id,))}
+        "SELECT kind, amount FROM logs WHERE card_id=? AND kind IN ('quote','intent','contract','payment')",
+        (card_id,)) if r["kind"] == "intent" or positive_amount(r["amount"])}
     stage = "none"
     for s in DEAL_STAGES:
         if s in kinds:

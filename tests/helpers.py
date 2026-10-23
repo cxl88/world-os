@@ -43,7 +43,8 @@ class Base(unittest.TestCase):
         self.assertEqual(code, 0, f"命令失败：{args}\nstdout={o}\nstderr={e}")
         return o
 
-    def fail(self, *args, contains=None):
+    def fails(self, *args, contains=None):
+        """运行应当失败的命令。不叫 fail：那会覆盖 TestCase.fail，断言失败时的报错会被吞掉。"""
         code, o, e = self.cli(*args)
         self.assertEqual(code, 1, f"命令应失败但成功了：{args}\nstdout={o}")
         if contains:

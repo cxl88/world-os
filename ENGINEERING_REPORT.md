@@ -1,5 +1,22 @@
 # 工程报告：架构审查 001 / 指令 002 整改（2026-10-23）
 
+## 0. 架构审查 002 整改（第二轮，v0.2.1）
+
+审查意见见 PR #13 的 ARCHITECT REVIEW 002；逐项修复与回归测试见 TEST_REPORT.md 第 0 节。第 1–7 节为第一轮记录。
+
+| 编号 | 审查项 | 状态 | 证据 |
+|---|---|---|---|
+| R002-P0-1 | 预算闸门按单次上限预留，不能整笔超支；配置值校验；缺用量标记待对账 | PASS | `worldos/llm.py`；test_e_cost 新增 6 项、改写 1 项；变异抽查 |
+| R002-P0-2 | 0、NaN、Infinity 金额不能促成成交；`won` 需正的回款合计 | PASS | `records.py`、`cards.py`、`evidence.py`；test_d_evidence 新增 2 项 |
+| R002-3 | 评分过期提醒 | PASS | `scoring.stale_reasons`、`brief.py`；test_brief_flags_stale_score |
+| R002-4 | 独立来源计算方式与人工核实说明 | PASS（文档） | docs/SCORING.md 第 3 节、KNOWN_ISSUES L16、docs/ACCEPTANCE_WINDOWS.md（#11） |
+| R002-5 | PowerShell API Key 不回显输入 | PASS（转换写法已在 PowerShell 7.4 与 CI 的 5.1 上验证）/ NOT TESTED（交互输入需要人在控制台） | README、config.example.ps1、CI 步骤 |
+| R002-6 | 全部自动化测试 | PASS（本地 Python 3.10–3.13，各 50 项）；CI 见 PR 复验说明 | reports/2026-10-23-review-002/ |
+| R002-7 | 不通过修改测试预期掩盖缺陷 | PASS | 唯一改变预期的原有测试正是审查指出的缺陷，见 TEST_REPORT 0.1 |
+| R002-8 | 数据库升级不丢数据 | PASS | test_v2_database_is_upgraded |
+| #7 / #9 / #11 | 本机实测、真实模型、人工核实来源 | NOT TESTED | 需要你本人操作，步骤见 docs/ACCEPTANCE_WINDOWS.md |
+
+
 ## 结论
 
 - 完整源码、测试、文档、演示数据都在仓库里，不是只有 README。

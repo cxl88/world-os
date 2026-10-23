@@ -1,4 +1,6 @@
 """验证记录：行动（假设—验收—结论）与现实反馈日志（访谈、报价、意向、合同、回款、成本、工时、认知、体验）。"""
+import math
+
 from . import cards, db, evidence
 
 LOG_KINDS = ["interview", "quote", "intent", "contract", "payment", "cost", "time", "insight", "experience"]
@@ -8,6 +10,7 @@ LOG_NAMES = {"interview": "访谈", "quote": "报价", "intent": "合作意向",
 CUSTOMER_LOGS = {"interview": "customer_statement", "quote": "quote", "intent": "intent",
                  "contract": "contract", "payment": "payment"}
 MONEY_LOGS = {"quote", "contract", "payment", "cost"}
+POSITIVE_MONEY_LOGS = {"quote", "contract", "payment"}   # 金额必须大于 0：0 元回款不是回款
 TIME_CATEGORIES = ["build", "research", "outreach", "delivery"]
 DECISIONS = ["continue", "adjust", "pause", "kill"]
 
@@ -21,6 +24,8 @@ def add_action(conn, card_id, title, purpose=None, hypothesis=None, acceptance=N
         cards.ensure_open(c)
         if c["filter_flag"] != "ok":
             raise ValueError(f"机会卡 #{card_id} 未通过前置过滤，不能安排验证行动")
+    if money is not None and not math.isfinite(money):
+        raise ValueError("金额预算必须是有限数字")
     if minutes is not None and minutes < 0 or money is not None and money < 0:
         raise ValueError("预算不能为负数")
     return db.insert(conn, "actions", {
@@ -56,8 +61,12 @@ def add_log(conn, kind, card_id=None, amount=None, minutes=None, category=None, 
         raise ValueError(f"记录类型必须是 {LOG_KINDS}")
     if kind in CUSTOMER_LOGS and not (counterpart or "").strip():
         raise ValueError(f"{LOG_NAMES[kind]}记录必须写对方代号（--who），只写你自己能识别的代号")
-    if kind in ("quote", "contract", "payment") and amount is None:
+    if kind in POSITIVE_MONEY_LOGS and amount is None:
         raise ValueError(f"{LOG_NAMES[kind]}记录必须写金额（--amount）")
+    if amount is not None and not math.isfinite(amount):
+        raise ValueError("金额必须是有限数字，不能是 NaN 或 Infinity")
+    if kind in POSITIVE_MONEY_LOGS and amount <= 0:
+        raise ValueError(f"{LOG_NAMES[kind]}金额必须大于 0")
     if amount is not None and amount < 0:
         raise ValueError("金额不能为负数")
     if kind == "time":

@@ -14,8 +14,16 @@
   WORLDOS_MONTHLY_BUDGET_USD  月度预算，默认 25
   WORLDOS_MAX_CALLS_PER_DAY   每日调用次数上限，默认 30
   WORLDOS_MOCK_RESPONSE       模拟适配器返回内容所在文件（可选）
+
+预算闸门（本地，不是供应商侧的硬上限）：
+  - 发请求前按“输入 UTF-8 字节数 + 消息格式开销”和 max_tokens 估算单次费用上限，
+    本月已计费用 + 这次上限 > 预算时拦截，不发请求；
+  - 请求发出前先记一条 pending，按上限计入预算；返回后按实际用量改写；
+  - 供应商没有返回用量、或调用失败（可能已被计费），按上限计入并标记“待对账”；
+  - 实际用量超过上限时照实记账并标出，说明供应商没有遵守 max_tokens 或估算前提不成立。
 """
 import json
+import math
 import os
 import re
 import urllib.error
@@ -45,32 +53,94 @@ def provider():
     return None
 
 
-def month_spend(conn):
-    """本月真实花费（美元）。模拟调用和失败调用不计入。"""
-    row = conn.execute(
-        "SELECT COALESCE(SUM(cost_usd),0) FROM llm_calls WHERE simulated=0 AND status='ok' "
-        "AND substr(created_at,1,7)=substr(?,1,7)", (db.now(),)).fetchone()
-    return row[0]
+# 计入预算的状态：已发出的请求都可能产生费用；blocked 没有发出
+BILLABLE = ("pending", "ok", "error")
+# 每次请求的消息格式开销（角色标记等）按 64 个 token 预留
+MESSAGE_OVERHEAD_TOKENS = 64
+
+
+def month_spend(conn, month=None):
+    """本月计入预算的真实花费（美元），含按上限预估、待对账的部分。模拟调用不计入。"""
+    return ledger(conn, month)["spend"]
+
+
+def ledger(conn, month=None):
+    """本月账本：已确认的实际费用与按上限预估的待对账费用分开统计。"""
+    month = month or db.now()[:7]
+    rows = conn.execute(
+        "SELECT status, usage_known, cost_usd FROM llm_calls WHERE simulated=0 AND substr(created_at,1,7)=?",
+        (month,)).fetchall()
+    billed = [r for r in rows if r["status"] in BILLABLE]
+    known = [r["cost_usd"] or 0 for r in billed if r["usage_known"]]
+    unknown = [r["cost_usd"] or 0 for r in billed if not r["usage_known"]]
+    return {"ok": sum(r["status"] == "ok" for r in rows), "confirmed": sum(known),
+            "unknown_n": len(unknown), "unknown": sum(unknown), "spend": sum(known) + sum(unknown)}
 
 
 def calls_today(conn):
     return conn.execute(
-        "SELECT COUNT(*) FROM llm_calls WHERE status IN ('ok','error') AND substr(created_at,1,10)=substr(?,1,10)",
-        (db.now(),)).fetchone()[0]
+        "SELECT COUNT(*) FROM llm_calls WHERE status IN ('pending','ok','error') "
+        "AND substr(created_at,1,10)=substr(?,1,10)", (db.now(),)).fetchone()[0]
 
 
-def _record(conn, task, prov, model, status, error=None, tin=0, tout=0, cost=0.0, simulated=False):
-    db.insert(conn, "llm_calls", {
+def _record(conn, task, prov, model, status, error=None, tin=0, tout=0, cost=0.0, simulated=False,
+            est=None, usage_known=True):
+    return db.insert(conn, "llm_calls", {
         "task": task, "provider": prov, "model": model, "status": status, "error": error,
         "input_tokens": tin, "output_tokens": tout, "cost_usd": cost, "simulated": int(simulated),
-        "created_at": db.now()})
+        "created_at": db.now(), "est_cost_usd": est, "usage_known": int(usage_known)})
 
 
-def _price(name):
-    v = os.environ.get(name)
-    if v is None or v.strip() == "":
+def _update(conn, call_id, **fields):
+    sets = ", ".join(f"{k}=?" for k in fields)
+    conn.execute(f"UPDATE llm_calls SET {sets} WHERE id=?", [*fields.values(), call_id])
+    conn.commit()
+
+
+def _number(name, default=None):
+    """读取非负有限数。缺失、非数字、负数、NaN、Infinity 都拒绝调用。"""
+    raw = (os.environ.get(name) or "").strip() or default
+    if raw is None:
         raise ModelUnavailable(f"未设置 {name}（美元/百万 token），为避免把真实账单记成 0，拒绝调用")
-    return float(v)
+    try:
+        v = float(raw)
+    except ValueError:
+        v = math.nan
+    if not math.isfinite(v) or v < 0:
+        raise ModelUnavailable(f"{name}={raw!r} 无效：必须是不小于 0 的有限数字，已拒绝调用")
+    return v
+
+
+def _call_limit():
+    raw = os.environ.get("WORLDOS_MAX_CALLS_PER_DAY", "30")
+    try:
+        v = int(raw)
+    except ValueError:
+        v = -1
+    if v < 0:
+        raise ModelUnavailable(f"WORLDOS_MAX_CALLS_PER_DAY={raw!r} 无效：必须是不小于 0 的整数，已拒绝调用")
+    return v
+
+
+def estimate_cost(system, user, max_tokens, price_in, price_out):
+    """单次调用的费用上限（美元）和输入 token 上限。
+
+    输入按 UTF-8 字节数计：字节级分词（GPT、DeepSeek、Qwen 等）每个 token 至少 1 个字节，
+    所以字节数不会少于 token 数；中文约高估 2–4 倍，宁可多算。输出按 max_tokens 计。
+    """
+    tin = len(system.encode("utf-8")) + len(user.encode("utf-8")) + MESSAGE_OVERHEAD_TOKENS
+    return tin / 1e6 * price_in + max_tokens / 1e6 * price_out, tin
+
+
+def _usage(data):
+    """返回 (输入, 输出) token；缺失或格式不对时返回 None（用量未知）。"""
+    usage = data.get("usage") if isinstance(data, dict) else None
+    if not isinstance(usage, dict):
+        return None
+    tin, tout = usage.get("prompt_tokens"), usage.get("completion_tokens")
+    if not all(isinstance(x, int) and not isinstance(x, bool) and x >= 0 for x in (tin, tout)):
+        return None
+    return tin, tout
 
 
 def chat(conn, task, system, user, max_tokens=2000):
@@ -81,13 +151,26 @@ def chat(conn, task, system, user, max_tokens=2000):
         raise ModelUnavailable(f"未知的 WORLDOS_LLM_PROVIDER={prov}")
     model = os.environ.get("WORLDOS_LLM_MODEL", "mock-deterministic" if prov == "mock" else "deepseek-flash")
     simulated = prov == "mock"
+    if not isinstance(max_tokens, int) or max_tokens <= 0:
+        raise ValueError("max_tokens 必须是正整数")
+    limit = _call_limit()
 
-    budget = float(os.environ.get("WORLDOS_MONTHLY_BUDGET_USD", "25"))
-    spent = month_spend(conn)
-    if not simulated and spent >= budget:
-        _record(conn, task, prov, model, "blocked", f"预算已用完 ${spent:.4f}/${budget:.2f}")
-        raise BudgetExceeded(f"本月模型花费 ${spent:.4f} 已达到上限 ${budget:.2f}，已停止新的收费请求")
-    limit = int(os.environ.get("WORLDOS_MAX_CALLS_PER_DAY", "30"))
+    if not simulated:
+        # 配置先全部校验，任何一项无效都不发请求
+        pin, pout = _number("WORLDOS_PRICE_IN"), _number("WORLDOS_PRICE_OUT")
+        budget = _number("WORLDOS_MONTHLY_BUDGET_USD", "25")
+        try:
+            url = os.environ["WORLDOS_LLM_BASE_URL"].rstrip("/") + "/chat/completions"
+            key = os.environ["WORLDOS_LLM_API_KEY"]
+        except KeyError as e:
+            raise ModelUnavailable(f"缺少环境变量 {e.args[0]}")
+        est, tin_max = estimate_cost(system, user, max_tokens, pin, pout)
+        spent = month_spend(conn)
+        if spent + est > budget:
+            _record(conn, task, prov, model, "blocked",
+                    f"本月已计 ${spent:.4f} + 本次上限 ${est:.4f} 超过预算 ${budget:.2f}", est=est)
+            raise BudgetExceeded(f"本月模型花费已计 ${spent:.4f}，本次调用最多 ${est:.4f}，"
+                                 f"合计会超过预算 ${budget:.2f}，已停止新的收费请求")
     if calls_today(conn) >= limit:
         _record(conn, task, prov, model, "blocked", f"今日调用次数已达上限 {limit}")
         raise CallLimitExceeded(f"今日模型调用已达 {limit} 次上限，已停止调用")
@@ -98,31 +181,37 @@ def chat(conn, task, system, user, max_tokens=2000):
         _record(conn, task, prov, model, "ok", tin=tin, tout=tout, cost=0.0, simulated=True)
         return text
 
-    try:
-        pin, pout = _price("WORLDOS_PRICE_IN"), _price("WORLDOS_PRICE_OUT")
-        url = os.environ["WORLDOS_LLM_BASE_URL"].rstrip("/") + "/chat/completions"
-        key = os.environ["WORLDOS_LLM_API_KEY"]
-    except KeyError as e:
-        raise ModelUnavailable(f"缺少环境变量 {e.args[0]}")
     body = json.dumps({
         "model": model, "max_tokens": max_tokens, "temperature": 0.2,
         "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
     }).encode("utf-8")
     req = urllib.request.Request(url, data=body, headers={
         "Content-Type": "application/json", "Authorization": "Bearer " + key})
+    # 先按上限记账再发请求：程序中途退出时，这笔钱仍计入预算，状态留在 pending 待对账
+    call_id = _record(conn, task, prov, model, "pending", cost=est, est=est, usage_known=False)
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         text = data["choices"][0]["message"]["content"]
-        usage = data.get("usage") or {}
+        if not isinstance(text, str):
+            raise TypeError("choices[0].message.content 不是文本")
     except (urllib.error.URLError, TimeoutError, OSError, ValueError, KeyError, IndexError, TypeError) as e:
         msg = f"{type(e).__name__}: {e}"
-        # 失败的请求是否被计费取决于供应商；没有返回 usage 时无法得知，费用记 0 并保留错误原文
-        _record(conn, task, prov, model, "error", msg[:500])
+        # 请求可能已经被供应商处理并计费，无法得知：按上限计入预算，待对账
+        _update(conn, call_id, status="error", error=(msg + "；是否计费未知，已按上限计入预算，待对账")[:500])
         raise ModelUnavailable(f"模型调用失败：{msg}")
-    tin, tout = int(usage.get("prompt_tokens", 0)), int(usage.get("completion_tokens", 0))
+    usage = _usage(data)
+    if usage is None:
+        _update(conn, call_id, status="ok", error="响应没有有效的 usage 用量，已按上限计入预算，待对账")
+        return text
+    tin, tout = usage
     cost = round(tin / 1e6 * pin + tout / 1e6 * pout, 6)
-    _record(conn, task, prov, model, "ok", tin=tin, tout=tout, cost=cost)
+    note = None
+    if tin > tin_max or tout > max_tokens:
+        note = (f"实际用量（输入 {tin} / 输出 {tout}）超过预估上限（输入 {tin_max} / 输出 {max_tokens}），"
+                "请核对供应商的计费方式")
+    _update(conn, call_id, status="ok", input_tokens=tin, output_tokens=tout, cost_usd=cost, usage_known=1,
+            error=note)
     return text
 
 

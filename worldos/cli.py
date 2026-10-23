@@ -317,13 +317,22 @@ def cmd_backup(conn, a):
 
 def cmd_cost(conn, a):
     for r in conn.execute(
-            "SELECT substr(created_at,1,7) AS m, task, provider, model, status, simulated, COUNT(*) AS n, "
-            "SUM(input_tokens) AS i, SUM(output_tokens) AS o, SUM(cost_usd) AS c FROM llm_calls "
-            "GROUP BY m, task, provider, model, status, simulated ORDER BY m"):
-        tag = "模拟(不计费)" if r["simulated"] else "真实"
+            "SELECT substr(created_at,1,7) AS m, task, provider, model, status, simulated, usage_known, "
+            "COUNT(*) AS n, SUM(input_tokens) AS i, SUM(output_tokens) AS o, SUM(cost_usd) AS c FROM llm_calls "
+            "GROUP BY m, task, provider, model, status, simulated, usage_known ORDER BY m"):
+        if r["simulated"]:
+            tag = "模拟(不计费)"
+        elif r["status"] == "blocked":
+            tag = "未发出"
+        else:
+            tag = "真实" if r["usage_known"] else "真实·用量未知(按上限预估，待对账)"
         out(f"{r['m']} {r['task']:<8} {r['provider']:<7} {r['model']:<18} {r['status']:<7} {tag} "
             f"{r['n']} 次 输入 {r['i']} 输出 {r['o']} ${r['c']:.4f}")
-    out(f"本月真实花费合计 ${llm.month_spend(conn):.4f}；今日已调用 {llm.calls_today(conn)} 次")
+    g = llm.ledger(conn)
+    pending = (f"；待对账 {g['unknown_n']} 笔，按上限预估 ${g['unknown']:.4f}，请与供应商账单核对"
+               if g["unknown_n"] else "")
+    out(f"本月真实花费合计 ${g['spend']:.4f}（已确认 ${g['confirmed']:.4f}{pending}）；"
+        f"今日已调用 {llm.calls_today(conn)} 次")
 
 
 def build_parser():

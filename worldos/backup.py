@@ -43,7 +43,7 @@ def restore(backup_path, db_path, force=False):
     except sqlite3.DatabaseError as e:
         src.close()
         raise ValueError(f"不是有效的 SQLite 备份：{e}")
-    if ok != "ok" or version != db.SCHEMA_VERSION:
+    if ok != "ok" or version not in db.READABLE_VERSIONS:
         src.close()
         raise ValueError(f"备份校验失败（integrity={ok}，版本={version}）")
     safety = None

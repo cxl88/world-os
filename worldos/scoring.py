@@ -67,6 +67,31 @@ def score_card(conn, card_id, scores, basis, reason=None, scorer="human"):
     return sid, raw, total, warnings
 
 
+def stale_reasons(conn, card_id):
+    """最近一次评分之后，证据或卡片内容有变化时返回原因列表；没有评分或分数仍然有效时返回 []。
+
+    证据按“纳入计算的已核实证据 id、证据强度、独立来源数”与评分时的记录比较，不受时间精度影响；
+    卡片字段修改按时间比较，精度为秒，评分后同一秒内的修改可能不提示。
+    """
+    s = conn.execute("SELECT * FROM scores WHERE card_id=? ORDER BY id DESC LIMIT 1", (card_id,)).fetchone()
+    if s is None:
+        return []
+    reasons = []
+    p = evidence.profile(conn, card_id)
+    reverified = conn.execute("SELECT COUNT(*) FROM evidence WHERE card_id=? AND verified=1 AND verified_at > ?",
+                              (card_id, s["created_at"])).fetchone()[0]
+    if (set(p["evidence_ids"]) != set(json.loads(s["evidence_ids"] or "[]")) or reverified
+            or (p["tier"], p["independent_sources"]) != (s["evidence_tier"], s["independent_sources"])):
+        reasons.append("评分后已核实的证据有变化")
+    marks = ", ".join("?" for _ in cards.FIELDS)
+    fields = [r[0] for r in conn.execute(
+        f"SELECT DISTINCT field FROM card_revisions WHERE card_id=? AND created_at > ? AND field IN ({marks})",
+        (card_id, s["created_at"], *cards.FIELDS))]
+    if fields:
+        reasons.append("评分后修改了卡片内容（" + "、".join(fields) + "）")
+    return reasons
+
+
 def latest_scores(conn):
     """每张卡最近一次评分，按总分排序。"""
     return conn.execute(

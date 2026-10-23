@@ -1,5 +1,5 @@
 """机会卡：字段修改、状态流转、人工审核、前置过滤。所有修改都写入 card_revisions。"""
-from . import db
+from . import db, evidence
 
 FIELDS = [
     "name", "bug_type", "domain", "problem", "affected", "competitors", "why_unsolved", "why_now",
@@ -87,13 +87,17 @@ def set_status(conn, card_id, new, reason=None, actor="human"):
             raise ValueError("AI 生成的卡必须先人工审核（review）才能进入研究/验证")
         if c["filter_flag"] != "ok":
             raise ValueError(f"前置过滤未通过（{FLAG_NAMES[c['filter_flag']]}），不能进入研究/验证")
-    if new == "won":
-        paid = conn.execute("SELECT COUNT(*) FROM logs WHERE card_id=? AND kind='payment'", (card_id,)).fetchone()[0]
-        if not paid:
-            raise ValueError("没有实际回款记录（log payment）的卡不能标记为 won")
+    if new == "won" and received(conn, card_id) <= 0:
+        raise ValueError("没有金额大于 0 的实际回款记录（log payment）的卡不能标记为 won")
     _revise(conn, card_id, "status", old, new, reason, actor)
     conn.execute("UPDATE cards SET status=? WHERE id=?", (new, card_id))
     conn.commit()
+
+
+def received(conn, card_id):
+    """实际回款合计：只计金额为正的有限数字（防止旧数据里的 0、NaN、Infinity 冒充回款）。"""
+    amounts = [r[0] for r in conn.execute("SELECT amount FROM logs WHERE card_id=? AND kind='payment'", (card_id,))]
+    return sum(a for a in amounts if evidence.positive_amount(a))
 
 
 def review(conn, card_id, reason=None):

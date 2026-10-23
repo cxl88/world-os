@@ -2,10 +2,11 @@
 
 内容：行动警报 → 今日机会 → 今日行动 → 少量新信息 → 本月账本。
 已淘汰、暂停、未审核、未通过过滤的卡不会被推荐。
+评分之后证据或卡片内容有变化的卡仍会出现，但会明确标出“评分可能已过期”。
 """
 from datetime import datetime, timedelta
 
-from . import evidence, scoring
+from . import evidence, llm, scoring
 
 ACTIVE = ("researching", "validating")
 
@@ -54,17 +55,25 @@ def build(conn, today=None):
         "SELECT COUNT(*) FROM items WHERE flags LIKE '%possible_injection%' AND processed_at IS NULL").fetchone()[0]
     if suspicious:
         alerts.append(f"{suspicious} 条未处理信息含疑似指令文本，分析时只作数据看待。")
+    ranked = recommendable(conn)
+    stale = {r["id"]: scoring.stale_reasons(conn, r["id"]) for r in ranked}
+    stale_ids = [f"#{cid}" for cid, why in stale.items() if why]
+    if stale_ids:
+        alerts.append(f"{len(stale_ids)} 张候选卡（{'、'.join(stale_ids)}）评分后证据或内容有变化，"
+                      "排序用的是旧分数，请重新评分。")
     lines += [f"- {a}" for a in alerts] or ["- 无"]
     lines.append("")
 
     # 2. 今日机会
     lines.append("## 今日机会")
-    ranked = recommendable(conn)
     pick = ranked[0] if ranked else None
     if pick:
         p = evidence.profile(conn, pick["id"])
+        lines.append(f"**#{pick['id']} {pick['name']}**（{pick['bug_type'] or '未分类'}｜{pick['total']} 分）")
+        if stale[pick["id"]]:
+            lines.append(f"- 【注意】评分可能已过期：{'；'.join(stale[pick['id']])}。"
+                         f"请用 score {pick['id']} … --reason 重新评分")
         lines += [
-            f"**#{pick['id']} {pick['name']}**（{pick['bug_type'] or '未分类'}｜{pick['total']} 分）",
             f"- 证据强度：{evidence.TIER_NAMES[p['tier']]}，独立来源 {p['independent_sources']} 个",
             f"- 成交状态：{evidence.DEAL_NAMES[p['deal_stage']]}",
             f"- 问题：{pick['problem'] or '未填'}",
@@ -104,9 +113,7 @@ def build(conn, today=None):
     lines.append("")
 
     # 5. 本月账本
-    real = conn.execute(
-        "SELECT COUNT(*), COALESCE(SUM(cost_usd),0) FROM llm_calls WHERE simulated=0 AND status='ok' "
-        "AND substr(created_at,1,7)=?", (month,)).fetchone()
+    g = llm.ledger(conn, month)
     sim = conn.execute("SELECT COUNT(*) FROM llm_calls WHERE simulated=1 AND substr(created_at,1,7)=?",
                        (month,)).fetchone()[0]
     failed = conn.execute("SELECT COUNT(*) FROM llm_calls WHERE status!='ok' AND substr(created_at,1,7)=?",
@@ -121,7 +128,9 @@ def build(conn, today=None):
         "GROUP BY category", (month,))}
     lines += [
         "## 本月账本",
-        f"- 真实模型调用 {real[0]} 次，${real[1]:.4f}；模拟调用 {sim} 次（不计费）；失败或被拦截 {failed} 次",
+        f"- 真实模型调用 {g['ok']} 次，${g['spend']:.4f}"
+        + (f"（其中 {g['unknown_n']} 笔用量未知，按上限预估 ${g['unknown']:.4f}，待对账）" if g["unknown_n"] else "")
+        + f"；模拟调用 {sim} 次（不计费）；失败或被拦截 {failed} 次",
         f"- 其他成本 {money.get('cost', 0):.2f} 元；报价金额 {money.get('quote', 0):.2f} 元；实际回款 {money.get('payment', 0):.2f} 元",
         f"- 客户访谈 {talks} 次",
         "- 工时（分钟）：" + ("，".join(f"{k or '未分类'} {v}" for k, v in mins.items()) or "未记录"),

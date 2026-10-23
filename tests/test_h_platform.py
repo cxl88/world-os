@@ -35,7 +35,7 @@ class PlatformTest(Base):
             self.new_id("item-add", "--title", f"t{i}", "--source", "s")
         self.assertIn("手动模式", self.ok("extract", "--manual", "--ids", "1,2"))
         self.assertIn("手动模式", self.ok("extract", "--manual", "--ids", "1", "3"))
-        self.fail("extract", "--manual", "--ids", "1,x", contains="id 列表")
+        self.fails("extract", "--manual", "--ids", "1,x", contains="id 列表")
 
     def test_demo_example_files_import(self):
         demo = os.path.join(ROOT, "examples", "demo")

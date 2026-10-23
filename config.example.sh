@@ -12,5 +12,5 @@ export WORLDOS_HOME="$HOME/worldos-data"
 # read -rs -p "API Key: " WORLDOS_LLM_API_KEY && export WORLDOS_LLM_API_KEY
 # export WORLDOS_PRICE_IN=0.30     # 美元/百万 token，按官方价格页填写
 # export WORLDOS_PRICE_OUT=1.20
-# export WORLDOS_MONTHLY_BUDGET_USD=25
+# export WORLDOS_MONTHLY_BUDGET_USD=25   # 本地预算闸门：每次请求前按单次费用上限预留，不是供应商侧的硬上限
 # export WORLDOS_MAX_CALLS_PER_DAY=30

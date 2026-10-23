@@ -12,7 +12,7 @@ import os
 import sqlite3
 from datetime import datetime, timezone
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS items (           -- 原始信息（人工录入 / RSS / 文件导入）
@@ -103,14 +103,25 @@ CREATE TABLE IF NOT EXISTS logs (            -- 现实反馈
 CREATE TABLE IF NOT EXISTS llm_calls (
   id INTEGER PRIMARY KEY,
   task TEXT, provider TEXT, model TEXT,
-  status TEXT NOT NULL,                      -- ok / error / blocked
+  status TEXT NOT NULL,                      -- pending（已发出、未返回）/ ok / error / blocked
   error TEXT,
   input_tokens INTEGER DEFAULT 0, output_tokens INTEGER DEFAULT 0,
-  cost_usd REAL DEFAULT 0,                   -- 模拟调用恒为 0
+  cost_usd REAL DEFAULT 0,                   -- 计入预算的金额：用量已知时为实际费用，未知时为预估上限；模拟调用恒为 0
   simulated INTEGER NOT NULL DEFAULT 0,      -- 1 = 模拟适配器，不是真实账单
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  est_cost_usd REAL,                         -- 发出请求前预估的单次费用上限
+  usage_known INTEGER NOT NULL DEFAULT 1     -- 0 = 供应商没有返回用量（或调用失败），费用按上限预估，待与账单对账
 );
 """
+
+# 旧版本 → 升级到下一版本的语句。v1 结构差异太大，不升级。
+MIGRATIONS = {
+    2: ["ALTER TABLE llm_calls ADD COLUMN est_cost_usd REAL",
+        "ALTER TABLE llm_calls ADD COLUMN usage_known INTEGER NOT NULL DEFAULT 1",
+        # v2 的失败调用费用记为 0，实际是否计费未知
+        "UPDATE llm_calls SET usage_known=0 WHERE status='error' AND simulated=0"],
+}
+READABLE_VERSIONS = set(MIGRATIONS) | {SCHEMA_VERSION}
 
 TABLES = ["items", "cards", "card_revisions", "evidence", "scores", "actions", "logs", "llm_calls"]
 
@@ -137,7 +148,9 @@ def connect(path):
     conn.execute("PRAGMA foreign_keys = ON")
     version = conn.execute("PRAGMA user_version").fetchone()[0]
     has_tables = conn.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table'").fetchone()[0]
-    if has_tables and version != SCHEMA_VERSION:
+    if has_tables and version in MIGRATIONS:
+        _migrate(conn, version)
+    elif has_tables and version != SCHEMA_VERSION:
         conn.close()
         raise RuntimeError(
             f"数据库 {path} 是旧版结构（版本 {version}），当前程序需要版本 {SCHEMA_VERSION}。"
@@ -145,6 +158,17 @@ def connect(path):
     conn.executescript(SCHEMA)
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     return conn
+
+
+def _migrate(conn, version):
+    """在一个事务里逐级升级；任何一步失败都整体回滚，数据库保持原版本。"""
+    with conn:
+        conn.execute("BEGIN")   # DDL 默认不开启事务，显式开启才能整体回滚
+        while version < SCHEMA_VERSION:
+            for sql in MIGRATIONS[version]:
+                conn.execute(sql)
+            version += 1
+            conn.execute(f"PRAGMA user_version = {version}")
 
 
 def content_hash(title, url, content):

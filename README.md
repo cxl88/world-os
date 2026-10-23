@@ -110,7 +110,8 @@ python -m worldos cards-import "D:\下载\结果.json" --ai --items "3,4,5"
 $env:WORLDOS_LLM_PROVIDER = "openai"
 $env:WORLDOS_LLM_BASE_URL = "https://api.deepseek.com"
 $env:WORLDOS_LLM_MODEL = "deepseek-flash"
-$env:WORLDOS_LLM_API_KEY = Read-Host "API Key"      # 输入时不会写进命令历史文件
+$k = Read-Host "API Key" -AsSecureString            # 输入不回显，也不进命令历史
+$env:WORLDOS_LLM_API_KEY = [System.Net.NetworkCredential]::new("", $k).Password; Remove-Variable k
 $env:WORLDOS_PRICE_IN = "0.30"
 $env:WORLDOS_PRICE_OUT = "1.20"
 $env:WORLDOS_MONTHLY_BUDGET_USD = "25"
@@ -119,11 +120,19 @@ python -m worldos extract --limit 5
 python -m worldos cost
 ```
 
-Bash 对应写法：`export WORLDOS_LLM_API_KEY=...`（其余同理）。
+Bash 对应写法：`read -rs -p "API Key: " WORLDOS_LLM_API_KEY && export WORLDOS_LLM_API_KEY`（输入不回显），其余用 `export 名称=值`。
 
-- API Key 只放环境变量，不要写进任何文件、脚本或仓库。用 `SetEnvironmentVariable(..., "User")` 持久化会以明文存在当前用户的注册表里，请自行权衡。
-- 没填单价时拒绝真实调用，避免把账单记成 0。
-- 本月真实花费达到预算、或今日调用达到次数上限后，新的收费请求会被拦截并记录。
+**API Key：**
+- 只放环境变量，不要写进任何文件、脚本或仓库，也不要直接写在命令行里（会进命令历史）。
+- 环境变量的局限：只在当前窗口有效，关闭窗口就没了；这个窗口启动的所有程序、以及以你的账户运行的其他程序都能读到它；开着 `Start-Transcript` 时输入的内容不会被记录，但之后打印变量会被记录。
+- 不建议用 `setx` 或 `SetEnvironmentVariable(..., "User")` 持久化：会以明文存在当前用户的注册表里。
+
+**费用控制（本地闸门，不是供应商侧的硬上限）：**
+- 单价、月预算、每日次数没填或无效（负数、NaN、Infinity、不是数字）时，拒绝真实调用。
+- 每次请求前按“输入字节数 + 格式开销”和 `max_tokens` 估算这次最多花多少钱；本月已计费用加上这次的上限超过预算时，不发请求并记录。
+- 请求发出前先按上限记账，返回后按供应商给的实际用量改写。供应商没有返回用量、调用失败（可能已经计费）、或程序中途被关掉时，这笔按上限计入预算并标为“待对账”。
+- 每月用 `cost` 看“待对账”的笔数和金额，与供应商账单核对。待对账金额是上限，实际通常更低；它只计入当月预算。
+- 这个闸门只管本程序发出的请求，并假设供应商遵守 `max_tokens`；实际用量超过上限时会照实记账并在记录里标出。如果供应商支持，请在其后台设置消费上限，或只充值小额余额。
 - 模型调用失败会记录错误原文，并自动降级为手动模式（生成提示词文件）。
 - `WORLDOS_LLM_PROVIDER=mock` 是测试用的确定性模拟适配器：输出标记为【模拟输出】，费用恒为 0，不能当作研究结论。
 

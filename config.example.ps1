@@ -15,9 +15,12 @@ $env:WORLDOS_HOME = Join-Path ([Environment]::GetFolderPath("UserProfile")) "wor
 # $env:WORLDOS_LLM_PROVIDER = "openai"
 # $env:WORLDOS_LLM_BASE_URL = "https://api.deepseek.com"
 # $env:WORLDOS_LLM_MODEL = "deepseek-flash"
-# $env:WORLDOS_LLM_API_KEY = Read-Host "API Key"
+# 输入不回显、不进命令历史；不要把 Key 直接写在这个文件里
+# $k = Read-Host "API Key" -AsSecureString
+# $env:WORLDOS_LLM_API_KEY = [System.Net.NetworkCredential]::new("", $k).Password; Remove-Variable k
 # 单价：美元/百万 token，按官方价格页填写（以下为 2026-10-23 查询的 deepseek-flash 高峰价）
 # $env:WORLDOS_PRICE_IN = "0.30"
 # $env:WORLDOS_PRICE_OUT = "1.20"
+# 本地预算闸门：每次请求前按单次费用上限预留，不是供应商侧的硬上限
 # $env:WORLDOS_MONTHLY_BUDGET_USD = "25"
 # $env:WORLDOS_MAX_CALLS_PER_DAY = "30"

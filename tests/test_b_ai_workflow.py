@@ -34,9 +34,9 @@ class MockAiWorkflowTest(Base):
         self.assertIsNotNone(self.scalar("SELECT processed_at FROM items WHERE id=?", i1))
 
         # 未审核：不能评分、不能进入研究
-        self.fail("score", card_id, "--pain", 1, "--access", 1, "--feasibility", 1, "--reuse", 1, "--risk", 1,
+        self.fails("score", card_id, "--pain", 1, "--access", 1, "--feasibility", 1, "--reuse", 1, "--risk", 1,
                   "--basis", "x", contains="审核")
-        self.fail("status", card_id, "researching", contains="审核")
+        self.fails("status", card_id, "researching", contains="审核")
         self.assertNotIn("发票", self.ok("brief").split("## 今日机会")[1].split("##")[0])
 
         self.ok("review", card_id)
