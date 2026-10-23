@@ -2,13 +2,20 @@
 # 用法：powershell -ExecutionPolicy Bypass -File examples\bug_hunter_2026-10\run.ps1
 param([string]$DataDir = "")
 $ErrorActionPreference = "Stop"
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }  # 无控制台的环境（如 CI）可能不允许设置
 $env:PYTHONUTF8 = "1"; $env:PYTHONIOENCODING = "utf-8"
 $Here = $PSScriptRoot
 $env:PYTHONPATH = Split-Path -Parent (Split-Path -Parent $Here)
 $Python = "python"; if (-not (Get-Command python -ErrorAction SilentlyContinue)) { $Python = "python3" }
 if (-not $DataDir) { $DataDir = Join-Path ([System.IO.Path]::GetTempPath()) "worldos-bughunter-sample" }
-if (Test-Path $DataDir) { Remove-Item -Recurse -Force $DataDir }
+# 安全保护：只清理本脚本自己创建过的目录（含标记文件），绝不删除你的正式数据目录
+$Marker = Join-Path $DataDir ".bughunter-sample"
+if (Test-Path $DataDir) {
+    if (-not (Test-Path $Marker)) { throw "目录已存在且不是本脚本创建的，为避免误删请换一个目录：$DataDir" }
+    Remove-Item -Recurse -Force $DataDir
+}
+New-Item -ItemType Directory -Force -Path $DataDir | Out-Null
+New-Item -ItemType File -Path $Marker | Out-Null
 $env:WORLDOS_HOME = $DataDir
 Remove-Item Env:WORLDOS_DB, Env:WORLDOS_LLM_PROVIDER -ErrorAction SilentlyContinue
 function W { & $Python -m worldos @args; if ($LASTEXITCODE -ne 0) { throw "命令失败：worldos $args" } }

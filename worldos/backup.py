@@ -1,6 +1,7 @@
 """导出、备份、恢复。"""
 import json
 import os
+import pathlib
 import shutil
 import sqlite3
 from datetime import datetime
@@ -34,7 +35,8 @@ def restore(backup_path, db_path, force=False):
     """用备份覆盖当前数据库。覆盖前先把当前库另存一份。返回 (恢复后的行数统计, 覆盖前的安全副本路径)。"""
     if not os.path.isfile(backup_path):
         raise ValueError(f"备份文件不存在：{backup_path}")
-    src = sqlite3.connect(f"file:{os.path.abspath(backup_path)}?mode=ro", uri=True)
+    # 用标准 file URI 以只读方式打开，Windows 盘符、中文和空格路径都能正确编码
+    src = sqlite3.connect(pathlib.Path(os.path.abspath(backup_path)).as_uri() + "?mode=ro", uri=True)
     try:
         ok = src.execute("PRAGMA integrity_check").fetchone()[0]
         version = src.execute("PRAGMA user_version").fetchone()[0]

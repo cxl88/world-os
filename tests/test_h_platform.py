@@ -37,6 +37,13 @@ class PlatformTest(Base):
         self.assertIn("手动模式", self.ok("extract", "--manual", "--ids", "1", "3"))
         self.fail("extract", "--manual", "--ids", "1,x", contains="id 列表")
 
+    def test_demo_example_files_import(self):
+        demo = os.path.join(ROOT, "examples", "demo")
+        self.assertIn("新增 3 条", self.ok("item-import", os.path.join(demo, "demo_items.json")))
+        cid = self.new_id("cards-import", os.path.join(demo, "demo_cards.json"))
+        self.assertTrue(all("【演示数据】" in r[0] for r in self.q("SELECT title FROM items")))
+        self.assertIn("【演示数据】", self.ok("card", cid))
+
     def test_porcelain_prints_only_id(self):
         code, o, e = self._porcelain("item-add", "--title", "t", "--source", "s")
         self.assertEqual((code, o.strip()), (0, "1"))

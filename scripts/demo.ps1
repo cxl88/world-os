@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 # 中文输出：让 Python 和 PowerShell 都用 UTF-8 交换文本
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }  # 无控制台的环境（如 CI）可能不允许设置
 $OutputEncoding = [System.Text.Encoding]::UTF8
 $env:PYTHONUTF8 = "1"
 $env:PYTHONIOENCODING = "utf-8"
