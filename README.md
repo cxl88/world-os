@@ -16,7 +16,7 @@
 |---|---|---|
 | Python | 3.10 及以上 | 3.10 / 3.11 / 3.12 / 3.13 在 Linux 上实测通过；Windows 由 GitHub Actions（windows-latest）验证，见 TEST_REPORT |
 | 系统 | Windows 10/11、macOS、Linux | |
-| PowerShell | Windows PowerShell 5.1 或 PowerShell 7 | 演示脚本在 PowerShell 7.4 实测；5.1 由 CI 验证 |
+| PowerShell | Windows PowerShell 5.1 或 PowerShell 7 | 两者都在 GitHub Actions 的 windows-latest 上跑通演示脚本 |
 | 依赖 | 无 | |
 
 Windows 安装 Python 时勾选 **Add python.exe to PATH**。如果输入 `python` 打开了微软商店，说明命中的是商店占位程序：到“设置 → 应用 → 高级应用设置 → 应用执行别名”里关闭 `python.exe` 和 `python3.exe` 的别名，或改用 `py` 启动器（把下文的 `python` 换成 `py -3`）。

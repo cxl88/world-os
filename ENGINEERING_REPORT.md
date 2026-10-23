@@ -3,10 +3,11 @@
 ## 结论
 
 - 完整源码、测试、文档、演示数据都在仓库里，不是只有 README。
-- 41 项自动化测试覆盖审查要求的测试 A–G，在 Python 3.10、3.11、3.12、3.13 上实际运行全部通过；16 处故意破坏关键规则的变异抽查全部被测试发现。
+- 41 项自动化测试覆盖审查要求的测试 A–G，在 Python 3.10、3.11、3.12、3.13（本地 Linux）和 GitHub Actions 的 Linux、Windows 上实际运行全部通过；16 处故意破坏关键规则的变异抽查全部被测试发现。
 - 证据模型按任务四重做：8 类证据，证据强度、支付意愿、成交状态三者分开，单条证据不能证明机会成立，评分有依据和修订记录。
 - BUG HUNTER 用 16 条可追溯的真实公开信息试运行，产出 5 张候选卡；没有一张达到“已验证”，报告如实说明。
-- **未完成**：GitHub 远程仓库等你创建空仓库后再推送；Windows 本机与 PowerShell 5.1 只能由 CI 验证；没有调用过真实模型。详见第 5 节和 KNOWN_ISSUES.md。
+- 私有仓库 cxl88/world-os 已建立，首个审查 PR 是 [#13](https://github.com/cxl88/world-os/pull/13)，[CI](https://github.com/cxl88/world-os/actions/runs/39897300962) 在 Linux 与 Windows（PowerShell 5.1 和 7）全部通过。
+- **未完成**：你自己的 Windows 电脑还没跑过（#7）；没有调用过真实模型（#9）；样本证据还没人工核实（#11）。详见第 5 节和 KNOWN_ISSUES.md。
 
 ## 1. 项目目录
 
@@ -82,7 +83,8 @@ world-os/
 | 001-1 | 项目目录树 | PASS | 本报告第 1 节 |
 | 001-1 | worldos-v1-review.zip（不含 Key、私人数据、虚拟环境、缓存、数据库） | PASS | 打包后已逐项检查，见第 6 节 |
 | 001-2 | README 在 PowerShell 下可执行 | PASS（PowerShell 7.4 / Linux 实测） | reports/…/readme-powershell-example.txt |
-| 001-2 | Windows PowerShell 5.1 与 Windows 本机 | NOT TESTED | 已写入 CI；仓库建好后补链接 |
+| 001-2 | Windows PowerShell 5.1 与 PowerShell 7（windows-latest） | PASS | [CI 运行](https://github.com/cxl88/world-os/actions/runs/39897300962)：Windows Server 2025、Python 3.12.10，unittest 41 项、demo.ps1（5.1 与 7）、BUG HUNTER run.ps1（5.1）均通过，中文输出正常 |
+| 001-2 | 你自己的 Windows 电脑 | NOT TESTED | #7 |
 | 001-2 | 示例不依赖 id=1 | PASS | `--porcelain` + 演示脚本 |
 | 001-3 | 测试 A 无 AI 服务 | PASS | test_a_manual_flow |
 | 001-3 | 测试 B AI 工作流（模拟） | PASS | test_b_ai_workflow |
@@ -91,21 +93,22 @@ world-os/
 | 001-3 | 测试 E 成本控制 | PASS | test_e_cost |
 | 001-3 | 测试 F 异常输入 | PASS | test_f_bad_input |
 | 001-3 | 测试 G 数据安全 | PASS | test_g_data_safety |
-| 001-3 | 真实模型端点 | NOT TESTED | 无 API Key；不产生费用 |
+| 001-3 | 测试 A–G 在 GitHub Actions 运行 | PASS | Linux（3.10、3.13）与 Windows（3.12）各 41 项 |
+| 001-3 | 真实模型端点 | NOT TESTED | 无 API Key；不产生费用（#9） |
 | 001-4 | 证据模型区分 8 类、证据≠成交、单证据不足、评分依据与修订记录 | PASS | docs/SCORING.md、test_d_evidence |
 | 001-5 | ≥10 条可追溯真实公开信息试运行 | PASS（16 条） | BUG_HUNTER_SAMPLE.md |
 | 001-5 | 至少一份可供亲自验证的研究报告 | PASS（2 份） | BUG_HUNTER_SAMPLE.md |
-| 001-5 | 证据经人工核实 | NOT TESTED | 需要你核对原文 |
-| 002-1 | 私有仓库 cxl88/world-os | BLOCKED | 等你创建空仓库（本会话不能调用建仓接口） |
-| 002-2 | 迁移代码并保留提交历史 | PASS（本地） | 本地 Git：基线 v0.1 + review-001 分支多次提交 |
-| 002-3 | Issues 与 Milestones G1–G4 | BLOCKED | 依赖远程仓库；Milestone 可能需要你在网页手动创建 |
-| 002-4 | GitHub Actions 运行 unittest | PASS（配置完成）/ NOT TESTED（尚未在 GitHub 上运行） | .github/workflows/tests.yml |
-| 002-5 | 首个审查 PR | BLOCKED | 依赖远程仓库 |
+| 001-5 | 证据经人工核实 | NOT TESTED | 需要你核对原文（#11） |
+| 002-1 | 私有仓库 cxl88/world-os | PASS | 你在网页创建空仓库后由我推送 |
+| 002-2 | 迁移代码并保留提交历史 | PASS | main = v0.1 基线；review-001 = 整改提交 |
+| 002-3 | Issues 与 Milestones G1–G4 | PASS | Milestones G1–G4；Issues #1–#12，均含任务描述、优先级、实施范围、验收标准、当前状态 |
+| 002-4 | GitHub Actions 运行 unittest | PASS | [PR #13 的 CI 运行](https://github.com/cxl88/world-os/actions/runs/39897300962) |
+| 002-5 | 首个审查 PR | PASS | [#13](https://github.com/cxl88/world-os/pull/13) |
 | 002-6 | 长期资产（目标、ADR、评分算法、提示词、已知问题、测试、合成数据、变更记录） | PASS | docs/、worldos/prompts.py、KNOWN_ISSUES.md、tests/、examples/、CHANGELOG.md |
 
 ## 5. 未解决的问题
 
-见 KNOWN_ISSUES.md。最重要的三项：远程仓库待创建；Windows 本机与 PowerShell 5.1 待 CI 验证；样本证据待你人工核实。
+见 KNOWN_ISSUES.md。最重要的三项：样本证据待你人工核实（#11）；你自己的 Windows 电脑待实测（#7）；真实模型待小额验证（#9）。
 
 ## 6. 交付包内容检查
 
@@ -113,6 +116,6 @@ world-os/
 
 ## 7. 下一阶段计划
 
-1. 仓库建好后：推送 main（v0.1 基线）与 review-001，开 PR，等 CI 在 Windows 上跑完并补充结果。
-2. 建 Milestone G1–G4 与对应 Issue，本轮工作关联到 G1/G2/G3。
-3. 你亲自做 BUG_HUNTER_SAMPLE 中 MinIO 迁移缺口的 7 天验证；系统开发冻结，除非验证中暴露真实阻碍。
+1. 总架构师审查 PR #13，验收后合并。
+2. 你在自己的 Windows 电脑跑一次演示（#7），并人工核实样本证据（#11）。
+3. 你亲自做 BUG_HUNTER_SAMPLE 中 MinIO 迁移缺口的 7 天验证（#12）；系统开发冻结，除非验证中暴露真实阻碍。

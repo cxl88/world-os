@@ -6,12 +6,12 @@
 
 | # | 事项 | 状态 | 需要什么 |
 |---|---|---|---|
-| U1 | 创建私有仓库 `cxl88/world-os` | BLOCKED（截至本文写成时） | 本会话不允许调用“创建仓库”接口。需要你在 github.com/new 建一个**空的**私有仓库（不勾选 README/.gitignore/License），必要时在 Claude GitHub App 里授权该仓库。之后由我推送 |
-| U2 | GitHub Milestones（G1–G4） | NOT TESTED | 当前可用的 GitHub 工具没有创建 Milestone 的接口，`gh` 命令行在本环境未认证。仓库建好后如果仍无法创建，需要你在网页上手动建 4 个 Milestone（约 2 分钟），Issue 再关联 |
-| U3 | 在你的 Windows 电脑上实际运行 | NOT TESTED | 本环境是 Linux。Windows 兼容性由 GitHub Actions 的 windows-latest 验证；你本机的 Python 版本、杀毒软件、路径权限仍需你亲自跑一次 `scripts\demo.ps1` |
-| U4 | 真实模型调用 | NOT TESTED | 没有使用任何真实 API Key，没有产生费用。真实端点的返回格式、计费口径需要你配置 Key 后用 `extract --limit 1` 试一次，并用 `cost` 对照供应商账单 |
-| U5 | BUG HUNTER 样本的人工核实 | NOT TESTED | 16 条来源由 Claude 读取并摘要，正式库中全部是“未核实”。需要你打开原文核对后再 `evidence-verify` |
-| U6 | 真实客户访谈 | NOT TESTED | 系统不能也不应该代替你接触客户 |
+| U1 | 创建私有仓库 `cxl88/world-os` | PASS | 你已在网页创建，代码已推送，首个审查 PR [#13](https://github.com/cxl88/world-os/pull/13) |
+| U2 | GitHub Milestones（G1–G4） | PASS | 已通过 GitHub API 创建，Issues #1–#12 已关联 |
+| U3 | 在你的 Windows 电脑上实际运行 | NOT TESTED（#7） | GitHub Actions windows-latest 已通过（[运行记录](https://github.com/cxl88/world-os/actions/runs/39897300962)）；你本机的 Python 版本、杀毒软件、路径权限仍需你亲自跑一次 `scripts\demo.ps1` |
+| U4 | 真实模型调用 | NOT TESTED（#9） | 没有使用任何真实 API Key，没有产生费用。真实端点的返回格式、计费口径需要你配置 Key 后用 `extract --limit 1` 试一次，并用 `cost` 对照供应商账单 |
+| U5 | BUG HUNTER 样本的人工核实 | NOT TESTED（#11） | 16 条来源由 Claude 读取并摘要，正式库中全部是“未核实”。需要你打开原文核对后再 `evidence-verify` |
+| U6 | 真实客户访谈 | NOT TESTED（#12） | 系统不能也不应该代替你接触客户 |
 
 ## 已知局限（设计上暂不解决）
 
@@ -28,6 +28,8 @@
 | L9 | GitHub Actions 会消耗私有仓库的免费分钟数（Windows 按 2 倍计） | 正常使用远低于免费额度，但不是 0 成本 | 如需节省，可去掉 Windows 任务，仅在发版前手动运行 |
 | L10 | Windows PowerShell 5.1 对 .ps1 文件编码敏感 | 编辑脚本时若存成无 BOM 的 UTF-8，中文会乱码甚至报错 | 仓库里的 .ps1 均为 UTF-8 BOM；修改后请保持该编码 |
 | L11 | 数据未加密 | 本机磁盘上的数据库是明文 | 依赖操作系统账户与磁盘加密（如 BitLocker） |
+| L12 | 英文版 Windows 上重定向输出时中文变成 `?` | 输出被重定向到文件或管道时（如 CI 日志），Python 按系统代码页编码；英文版 Windows 的代码页没有中文，中文显示为 `?`，程序不会崩溃。直接在终端窗口里显示不受影响 | 中文版 Windows 不受影响；英文版可先运行 `$env:PYTHONUTF8 = "1"`（演示脚本已自动设置） |
+| L13 | CI 使用的 actions/checkout@v4、setup-python@v5 基于 Node.js 20，GitHub 提示已弃用 | 目前只是警告，运行器会自动改用 Node.js 24 | 下次修改 CI 时升级到新的大版本 |
 
 ## 本轮发现并已修复的问题
 

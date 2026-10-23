@@ -1,7 +1,7 @@
 # 测试报告（2026-10-23，分支 review-001）
 
 环境：Linux 容器（x86_64）；Python 3.10.20 / 3.11 / 3.12 / 3.13.16；PowerShell 7.4.6（Linux 版）。
-**没有在 Windows 上运行过。** Windows 结果以 GitHub Actions 的 windows-latest 为准（仓库建好后补充链接）。
+Windows：GitHub Actions windows-latest（Windows Server 2025、Python 3.12.10）[运行记录](https://github.com/cxl88/world-os/actions/runs/39897300962)。**没有在你自己的 Windows 电脑上运行过**（#7）。
 原始输出：`reports/2026-10-23/`（路径中的临时目录已替换为 `<临时目录>`）。
 
 ## 1. 总结果
@@ -17,9 +17,12 @@
 | README 中 PowerShell 示例逐行执行（PowerShell 7.4，Linux） | PASS | readme-powershell-example.txt |
 | `bash examples/bug_hunter_2026-10/run.sh` | PASS | bughunter-bash.txt |
 | `pwsh -File examples/bug_hunter_2026-10/run.ps1` | PASS | bughunter-pwsh74.txt |
-| Windows PowerShell 5.1 下的演示脚本 | NOT TESTED（本地无 Windows；已写入 CI） | — |
-| Windows 上的单元测试 | NOT TESTED（已写入 CI） | — |
-| 真实模型端点调用 | NOT TESTED（无 API Key，测试中全部用 mock 替换网络请求） | — |
+| CI ubuntu-latest：`python -m unittest -v`（Python 3.10、3.13）与 `bash scripts/demo.sh` | PASS（unittest 各 41 项） | [运行记录](https://github.com/cxl88/world-os/actions/runs/39897300962) |
+| CI windows-latest：`python -m unittest -v`（Python 3.12） | PASS，41 项 | 同上 |
+| CI windows-latest：`scripts\demo.ps1`（Windows PowerShell 5.1 与 PowerShell 7） | PASS，中文输出正常 | 同上 |
+| CI windows-latest：`examples\bug_hunter_2026-10\run.ps1`（Windows PowerShell 5.1） | PASS，导入 16 条、生成 5 张待审核卡 | 同上 |
+| 你自己的 Windows 电脑 | NOT TESTED | #7 |
+| 真实模型端点调用 | NOT TESTED（无 API Key，测试中全部用 mock 替换网络请求） | #9 |
 
 测试不联网、不产生费用，每个测试使用独立的临时目录（目录名含中文和空格）。
 
@@ -52,7 +55,7 @@
 | **G 数据安全**：导出一致 | `test_export_matches_database`（导出 JSON 与数据库逐表逐行相等） | PASS |
 | G：备份与恢复一致 | `test_backup_and_restore_roundtrip`（恢复后与备份时逐表相等；覆盖前自动另存且保留了恢复前的数据）、`test_restore_into_new_location` | PASS |
 | G：坏备份与旧结构 | `test_restore_rejects_garbage`、`test_old_schema_is_refused` | PASS |
-| 平台：数据目录规则、GBK CSV、GBK 控制台、--porcelain、ID 列表传参 | `test_h_platform` 7 项（含演示数据文件导入） | PASS（Linux 上模拟 GBK；真实 Windows 见 CI） |
+| 平台：数据目录规则、GBK CSV、GBK 控制台、--porcelain、ID 列表传参 | `test_h_platform` 7 项（含演示数据文件导入） | PASS（Linux 与 windows-latest） |
 
 ## 3. 测试有效性抽查（变异测试）
 
@@ -91,7 +94,9 @@
 | 8 | 运行前自查 | 两处测试断言是我算错了期望值（66 写成 70，74 写成 75） | 改正断言 | 已修复 |
 | 9 | 输出检查 | 封顶后的分数显示为整数（60），未封顶的显示小数（54.0） | 统一为浮点数 | 已修复 |
 
-本轮最终代码上，全部 41 项测试在 4 个 Python 版本均通过，没有已知失败项。
+本轮最终代码上，全部 41 项测试在本地 4 个 Python 版本和 CI 的 Linux、Windows 上均通过，没有已知失败项。
+
+CI 中的一处观察：Windows 上 `unittest -v` 打印的中文测试说明显示为 `?`。原因是 CI 中输出被重定向，Python 按运行器（英文版 Windows）的系统代码页编码，而该代码页没有中文。这是测试框架自身的输出，不影响结果；演示脚本设置了 UTF-8，中文显示正常。见 KNOWN_ISSUES.md L12。
 
 ## 5. 如何自己复现
 
