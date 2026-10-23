@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+*.egg-info/
+
+# WORLD OS 本地数据：默认不进仓库（真实商业数据与个人资料保持本地私有）
+*.db
+*.db-journal
+*.sqlite
+worldos-data/
+prompts/
+briefs/
+backups/
+export/
+profile.md
+.env
+*.local.*
+
+# 打包产物
+*.zip
+dist/
+build/
