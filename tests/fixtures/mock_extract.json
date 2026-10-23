@@ -1,0 +1,15 @@
+[
+  {
+    "name": "【模拟输出】小企业发票录入",
+    "bug_type": "流程",
+    "domain": "【演示数据】中小企业财务",
+    "problem": "【模拟输出】发票需人工录入财务软件",
+    "payers": "【模拟输出】小企业老板（假设）",
+    "min_validation": "【模拟输出】联系 3 家小企业财务",
+    "kill_condition": "【模拟输出】3 家都已有自动化方案",
+    "evidence": [
+      {"item_id": 1, "claim": "【模拟输出】条目提到录入耗时", "kind": "fact"},
+      {"item_id": 2, "claim": "【模拟输出】财务软件缺接口", "kind": "inference"}
+    ]
+  }
+]

@@ -1,0 +1,16 @@
+[
+  {
+    "name": "【演示数据】球馆订场与对账流程",
+    "bug_type": "流程",
+    "domain": "【演示数据】体育场馆",
+    "problem": "【演示数据】订场靠群接龙，收款与订场每晚手工核对",
+    "affected": "【演示数据】中小球馆老板与前台",
+    "payers": "【演示数据】中小球馆老板（假设）",
+    "min_validation": "【演示数据】走访 5 家球馆",
+    "kill_condition": "【演示数据】5 家中少于 2 家愿为试用付费",
+    "evidence": [
+      {"evidence_type": "customer_statement", "claim": "【演示数据】馆主说每晚对账约 40 分钟", "kind": "fact", "who": "演示球馆A", "verified": true},
+      {"evidence_type": "public", "claim": "【演示数据】示例公开资料", "kind": "fact", "url": "https://example.com/demo-article", "verified": false}
+    ]
+  }
+]

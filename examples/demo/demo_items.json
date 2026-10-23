@@ -1,0 +1,8 @@
+{
+  "_说明": "【演示数据】全部为虚构内容，仅用于熟悉导入流程，不是真实商业信息。",
+  "items": [
+    {"title": "【演示数据】某羽毛球馆用微信群接龙订场，每晚手工对账", "source": "演示数据", "credibility": "C", "published_at": "2026-10-01", "content": "虚构：馆主每晚花约 40 分钟核对订场和收款。"},
+    {"title": "【演示数据】某小型工厂每月人工抄表", "source": "演示数据", "credibility": "C", "url": "https://example.com/demo-factory", "content": "虚构：设备科每月抄表约 2 人天。"},
+    {"title": "【演示数据】某代账公司抱怨发票整理耗时", "source": "演示数据", "credibility": "C", "content": "虚构：月初集中整理客户发票。"}
+  ]
+}

@@ -1,0 +1,58 @@
+# 最简单的质量检查：每个 Pull Request 和 main 分支的推送都运行全部单元测试。
+# 不部署、不使用任何密钥。Windows 任务同时验证 PowerShell 5.1 与 7 下的演示脚本。
+# 私有仓库会消耗 GitHub Actions 免费分钟数（Windows 按 2 倍计），每次运行约几分钟。
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  unittest:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: "3.10"
+          - os: ubuntu-latest
+            python: "3.13"
+          - os: windows-latest
+            python: "3.12"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: python -m unittest -v
+        run: python -m unittest -v
+      - name: Demo (bash)
+        if: runner.os == 'Linux'
+        run: bash scripts/demo.sh
+      - name: Demo (Windows PowerShell 5.1)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\demo.ps1
+      - name: Demo (PowerShell 7)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: pwsh -NoProfile -File scripts/demo.ps1
+      - name: BUG HUNTER sample (Windows PowerShell 5.1)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File examples\bug_hunter_2026-10\run.ps1
+      # README 里 API Key 隐藏输入的转换写法；交互输入无法在 CI 里测，用 ConvertTo-SecureString 代替 Read-Host
+      - name: README API Key snippet (Windows PowerShell 5.1)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $k = ConvertTo-SecureString "not-a-real-key" -AsPlainText -Force
+          $env:WORLDOS_LLM_API_KEY = [System.Net.NetworkCredential]::new("", $k).Password; Remove-Variable k
+          if ($env:WORLDOS_LLM_API_KEY -ne "not-a-real-key") { throw "API Key 转换失败" }

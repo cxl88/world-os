@@ -1,0 +1,48 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+test_extract_without_model_degrades_to_prompt_file (tests.test_a_manual_flow.ManualFlowTest) ... ok
+test_full_loop_without_model (tests.test_a_manual_flow.ManualFlowTest) ... ok
+test_default_mock_output_is_labelled (tests.test_b_ai_workflow.MockAiWorkflowTest) ... ok
+test_fixture_is_valid_json (tests.test_b_ai_workflow.MockAiWorkflowTest) ... ok
+test_mock_pipeline (tests.test_b_ai_workflow.MockAiWorkflowTest) ... ok
+test_action_kill_decision_kills_card (tests.test_c_risk_filter.RiskFilterTest) ... ok
+test_kill_flags_block_everything (tests.test_c_risk_filter.RiskFilterTest) ... ok
+test_pause_flags_pause_and_block_research (tests.test_c_risk_filter.RiskFilterTest) ... ok
+test_ai_evidence_cannot_become_customer_evidence (tests.test_d_evidence.EvidenceTest) ... ok
+test_ai_origin_evidence_never_stored_as_verified (tests.test_d_evidence.EvidenceTest) ... ok
+test_compute_examples (tests.test_d_evidence.EvidenceTest) ... ok
+test_deal_records_are_separate (tests.test_d_evidence.EvidenceTest) ... ok
+test_score_requires_basis_and_revision_reason (tests.test_d_evidence.EvidenceTest) ... ok
+test_single_evidence_cannot_prove_opportunity (tests.test_d_evidence.EvidenceTest) ... ok
+test_tier_and_pain_caps (tests.test_d_evidence.EvidenceTest) ... ok
+test_unverified_customer_statement_does_not_count (tests.test_d_evidence.EvidenceTest) ... ok
+test_mock_usage_is_not_billed (tests.test_e_cost.MockCostTest) ... ok
+test_bad_model_json_saved_not_imported (tests.test_e_cost.RealProviderCostTest) ... ok
+test_budget_stops_new_paid_requests (tests.test_e_cost.RealProviderCostTest) ... ok
+test_daily_call_limit (tests.test_e_cost.RealProviderCostTest) ... ok
+test_missing_price_refuses_paid_call (tests.test_e_cost.RealProviderCostTest) ... ok
+test_model_failure_is_recorded_and_degrades (tests.test_e_cost.RealProviderCostTest) ... ok
+test_bad_json (tests.test_f_bad_input.BadInputTest) ... ok
+test_duplicates (tests.test_f_bad_input.BadInputTest) ... ok
+test_format_item_neutralises_tags (tests.test_f_bad_input.BadInputTest) ... ok
+test_illegal_state_transitions (tests.test_f_bad_input.BadInputTest) ... ok
+test_invalid_scores (tests.test_f_bad_input.BadInputTest) ... ok
+test_missing_source (tests.test_f_bad_input.BadInputTest) ... ok
+test_prompt_injection_in_external_text (tests.test_f_bad_input.BadInputTest) ... ok
+test_backup_and_restore_roundtrip (tests.test_g_data_safety.DataSafetyTest) ... ok
+test_export_matches_database (tests.test_g_data_safety.DataSafetyTest) ... ok
+test_old_schema_is_refused (tests.test_g_data_safety.DataSafetyTest) ... ok
+test_restore_into_new_location (tests.test_g_data_safety.DataSafetyTest) ... ok
+test_restore_rejects_garbage (tests.test_g_data_safety.DataSafetyTest) ... ok
+test_data_dir_rules (tests.test_h_platform.PlatformTest) ... ok
+test_demo_example_files_import (tests.test_h_platform.PlatformTest) ... ok
+test_gbk_csv_import (tests.test_h_platform.PlatformTest) ... ok
+test_help (tests.test_h_platform.PlatformTest) ... ok
+test_id_lists_accept_commas_or_spaces (tests.test_h_platform.PlatformTest) ... ok
+test_module_entry_and_gbk_console (tests.test_h_platform.PlatformTest)
+模拟中文 Windows 控制台被重定向时的 GBK 编码：不能因字符无法编码而崩溃。 ... ok
+test_porcelain_prints_only_id (tests.test_h_platform.PlatformTest) ... ok
+
+----------------------------------------------------------------------
+Ran 41 tests in 3.970s
+
+OK
